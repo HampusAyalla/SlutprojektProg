@@ -12,15 +12,30 @@ ctx.beginPath()
 ctx.arc(50,50,6,0,2*Math.PI)
 ctx.stroke()
 
+const bullet = {
+    bulletSpeed: 1,
+    direction: "left",
+    appear: function(){
+        ctx.strokeStyle = "red"
+        ctx.beginPath()
+        ctx.arc(50,50,6,0,2*Math.PI)
+        ctx.stroke()
+    },
+    animate: function(){
+        if (this.direction == "left"){
+            
+        }
+    }
+    
+}
 
 // Movement
 let playerSpeed = 7.5
 let xSpeed = 0
 let ySpeed = 0
-let xPos = 0
-let yPos = 0
+let xPos = canvas.width / 2;
+let yPos = canvas.height / 2;
 
-const size = 30
 
 document.onkeydown = function (e){
     const key = e.key
@@ -60,18 +75,29 @@ document.onkeyup = function (e){
     }
 }
 
-document.onmousedown = function (t){
-    
-}
+document.onmousedown = function(){
+    myInterval = setInterval( function (){    
+    ctx.strokeStyle = "red"
+    ctx.beginPath()
+    ctx.arc(50,50,6,0,2*Math.PI)
+    ctx.stroke()
+    console.log("hej")
+    },fireRate*1000)
+
+document.onmouseup = function(){clearInterval(myInterval)}}
 
 function animate() {
-    ctx.clearRect(xPos,yPos, 40, 65)
-    xPos += xSpeed
-    yPos += ySpeed
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    ctx.fillStyle = "black"
-    ctx.fillRect(xPos, yPos, 40, 65)
-    window.requestAnimationFrame(animate)
+  xPos += xSpeed
+  yPos += ySpeed
+
+  ctx.fillStyle = "red"
+  ctx.fillRect(xPos, yPos, size, size)
+
+  window.requestAnimationFrame(animate)
 }
-window.requestAnimationFrame(animate)
+
+    requestAnimationFrame(animate)
+
     
