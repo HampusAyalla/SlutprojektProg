@@ -6,208 +6,300 @@ canvas.height = 526
 
 const gravity = 0.25
 
+let player
+let platforms = []
+let genericObjects = []
+let monsters = []
+let scrollOffset = 0
+let lastKey
+
+const keys = {
+    right: { pressed: false },
+    left: { pressed: false },
+    up: { pressed: false },
+    down: { pressed: false }
+}
+
 function createImage(imageSrc) {
     const image = new Image()
     image.src = imageSrc
     return image
 }
 
+const tilesetImage = createImage('./img/oak_woods_tileset.png')
+const backgroundImage = createImage('./img/background.png')
+const cloudsImage = createImage('./img/clouds.png')
+const runImage = createImage('./img/Run.png')
+const runLeftImage = createImage('./img/Run_left.png')
+const idleImage = createImage('./img/Idle.png')
+const idleLeftImage = createImage('./img/Idle_left.png')
+const jumpImage = createImage('./img/Jump.png')
+const jumpLeftImage = createImage('./img/Jump_left.png')
+const monsterImage = createImage('./img/jump.png')
+
 class Player {
     constructor() {
-        this.position = {
-            x: 100,
-            y: 100
+        this.speed = 5
+        this.position = { x: 100, y: 100 }
+        this.velocity = { x: 0, y: 0 }
+        this.width = 70
+        this.height = 128
+        this.frames = 0
+        this.maxFrames = 4
+        this.frameElapsed = 0
+        this.frameHold = 8
+
+        this.sprites = {
+            stand: { right: idleImage, left: idleLeftImage },
+            run: { right: runImage, left: runLeftImage },
+            jump: { right: jumpImage, left: jumpLeftImage }
         }
-        this.velocity = {
-            x: 0,
-            y: 0
-        }
-        this.width = 30
-        this.height = 30
+        this.currentSprite = this.sprites.stand.right
+        this.currentDirection = 'right'
     }
+
     draw() {
-        c.fillStyle = 'red'
-        c.fillRect(this.position.x, this.position.y, this.width, this.height)
+        c.drawImage(
+            this.currentSprite,
+            26 + this.frames * 128, 0, 70, 128,
+            this.position.x, this.position.y,
+            this.width, this.height
+        )
     }
+
     update() {
+        this.frameElapsed++
+        if (this.frameElapsed % this.frameHold === 0) {
+            this.frames++
+            if (this.frames > this.maxFrames) this.frames = 0
+        }
         this.draw()
         this.position.x += this.velocity.x
         this.position.y += this.velocity.y
-
         if (this.position.y + this.height + this.velocity.y <= canvas.height)
             this.velocity.y += gravity
-        else this.velocity.y = 0
     }
 }
 
 class Platform {
-    constructor({ x, y, image }) {
-        this.position = {
-            x,
-            y
-        }
-        this.image = image
-        this.width = image.width
-        this.height = image.height
+    constructor({ x, y, tiles = 5 }) {
+        this.position = { x, y }
+        this.tiles = tiles
+        this.tileSize = 24
+        this.width = this.tiles * this.tileSize
+        this.height = this.tileSize
     }
 
     draw() {
-        c.drawImage(this.image, this.position.x, this.position.y)
+        for (let i = 0; i < this.tiles; i++) {
+            let sx = 24
+            if (i === 0) sx = 0
+            else if (i === this.tiles - 1) sx = 48
+
+            c.drawImage(
+                tilesetImage,
+                sx, 0, 24, 24,
+                this.position.x + i * this.tileSize,
+                this.position.y,
+                this.tileSize,
+                this.tileSize
+            )
+        }
     }
 }
 
 class GenericObject {
     constructor({ x, y, image }) {
-        this.position = {
-            x,
-            y
-        }
+        this.position = { x, y }
         this.image = image
-        this.width = image.width
-        this.height = image.height
     }
-
     draw() {
-        c.drawImage(this.image, this.position.x, this.position.y)
+        const repetitions = Math.ceil(canvas.width / this.image.width) + 1
+        for (let i = 0; i < repetitions; i++) {
+            c.drawImage(this.image, this.position.x + i * this.image.width, this.position.y)
+        }
+    }
+    scroll(dx) {
+        this.position.x += dx
+        if (this.position.x <= -this.image.width) this.position.x = 0
     }
 }
 
-const platformImage = createImage('./img/platform.png')
-const backgroundImage = createImage('./img/background.png')
-const hillsImage = createImage('./img/hills.png')
-
-platformImage.onload = () => {
-    const player = new Player()
-
-    const platforms = [
-        new Platform({ x: -1, y: 410, image: platformImage }),
-        new Platform({ x: platformImage.width - 3, y: 410, image: platformImage })
-    ]
-
-    const genericObject = [
-        new GenericObject({
-            x: -1,
-            y: -1,
-            image: backgroundImage
-        }),
-        new GenericObject({
-            x: -1,
-            y: -1,
-            image: hillsImage
-        })
-    ]
-
-
-    const keys = {
-        right: {
-            pressed: false
-        },
-        left: {
-            pressed: false
-        },
-        up: {
-            pressed: false
-        },
-        down: {
-            pressed: false
-        }
+class Monster {
+    constructor({ x, y }) {
+        this.position = { x, y }
+        this.velocity = { x: 1, y: 0 }
+        this.width = 50
+        this.height = 50
     }
-
-    let scrollOffset = 0
-
-    function animate() {
-        requestAnimationFrame(animate)
-        c.fillStyle = 'white'
-        c.fillRect(0, 0, canvas.width, canvas.height)
-
-        genericObject.forEach(genericObject => {
-            genericObject.draw()
-        })
-
-        platforms.forEach(platform => {
-            platform.draw()
-        })
-
-        player.update()
-
-        if (keys.right.pressed && player.position.x < 400) {
-            player.velocity.x = 5
-        } else if (keys.left.pressed && player.position.x > 100) {
-            player.velocity.x = -5
-        } else {
-            player.velocity.x = 0
-            if (keys.right.pressed) {
-                scrollOffset += 5
-                platforms.forEach(platform => {
-                    platform.position.x -= 5
-                })
-                genericObject.forEach(genericObject => {
-                    genericObject.position.x -= 3
-                })
-            } else if (keys.left.pressed) {
-                scrollOffset -= 5
-                platforms.forEach(platform => {
-                    platform.position.x += 5
-                })
-                genericObject.forEach(genericObject => {
-                    genericObject.position.x += 3
-                })
-            }
-        }
-
-        platforms.forEach(platform => {
-            if (
-                player.position.y + player.height <= platform.position.y &&
-                player.position.y + player.height + player.velocity.y >= platform.position.y &&
-                player.position.x + player.width >= platform.position.x &&
-                player.position.x <= platform.position.x + platform.width
-            ) {
-                player.velocity.y = 0
-            }
-        })
-
-        if (scrollOffset > 2000)
-            console.log("You Win")
+    draw() {
+        c.drawImage(monsterImage, this.position.x, this.position.y, this.width, this.height)
     }
-
-    animate()
-
-    addEventListener('keydown', ({ keyCode }) => {
-        switch (keyCode) {
-            case 65:
-                keys.left.pressed = true
-                break
-            case 68:
-                keys.right.pressed = true
-                break
-            case 87:
-                player.velocity.y -= 7.5
-                keys.up.pressed = true
-                break
-            case 83:
-                player.height = 20
-                keys.down.pressed = true
-                break
-        }
-    })
-
-    addEventListener('keyup', ({ keyCode }) => {
-        switch (keyCode) {
-            case 65:
-                keys.left.pressed = false
-                break
-            case 68:
-                keys.right.pressed = false
-                break
-            case 87:
-                player.velocity.y -= 1
-                keys.up.pressed = false
-                break
-            case 83:
-                player.height = 30
-                player.position.y += 10
-                keys.down.pressed = false
-                break
-        }
-    })
+    update() {
+        this.position.x += this.velocity.x
+        if (this.position.x < 0 || this.position.x > canvas.width - this.width) this.velocity.x *= -1
+        this.draw()
+    }
 }
+
+function init() {
+    player = new Player()
+    monsters = [
+        new Monster({ x: 500, y: 450 }),
+        new Monster({ x: 1000, y: 450 })
+    ]
+
+    const tileCount = Math.ceil(canvas.width / 24) + 70 // Gör marken extra bred
+
+    platforms = [
+        new Platform({ x: 0, y: 502, tiles: tileCount }), // MARKEN
+        new Platform({ x: 300, y: 360, tiles: 5 }),
+        new Platform({ x: 600, y: 300, tiles: 8 }),
+        new Platform({ x: 1250, y: 150, tiles: 4 })
+    ]
+
+    genericObjects = [
+        new GenericObject({ x: 0, y: 0, image: backgroundImage }),
+        new GenericObject({ x: 0, y: 0, image: cloudsImage })
+    ]
+
+    scrollOffset = 0
+}
+
+function resetLevel() {
+    init()
+}
+
+function animate() {
+    requestAnimationFrame(animate)
+    c.fillStyle = 'white'
+    c.fillRect(0, 0, canvas.width, canvas.height)
+
+    genericObjects.forEach(obj => obj.draw())
+    platforms.forEach(platform => platform.draw())
+    monsters.forEach(monster => monster.update())
+    player.update()
+
+    platforms.forEach(platform => {
+        if (
+            player.position.y + player.height <= platform.position.y &&
+            player.position.y + player.height + player.velocity.y >= platform.position.y &&
+            player.position.x + player.width >= platform.position.x &&
+            player.position.x <= platform.position.x + platform.width
+        ) {
+            player.velocity.y = 0
+        }
+    })
+
+    monsters.forEach((monster, i) => {
+        const playerBottom = player.position.y + player.height
+        const monsterTop = monster.position.y
+        const playerPrevBottom = playerBottom - player.velocity.y
+        const horizontalCollision = 
+            player.position.x + player.width > monster.position.x &&
+            player.position.x < monster.position.x + monster.width
+
+        // Om spelaren hoppar på monstret
+        if (
+            playerPrevBottom <= monsterTop &&
+            playerBottom >= monsterTop &&
+            player.velocity.y > 0 &&
+            horizontalCollision
+        ) {
+            monsters.splice(i, 1)
+            player.velocity.y = -8
+        } 
+        // Om spelaren krockar med monstret från sidan eller under
+        else if (
+            horizontalCollision &&
+            player.position.y < monster.position.y + monster.height &&
+            playerBottom > monster.position.y
+        ) {
+            resetLevel()
+        }
+    })
+
+    if (player.velocity.y < 0 || player.velocity.y > 0) {
+        player.maxFrames = 0
+        player.currentSprite = player.sprites.jump[player.currentDirection]
+    } else if (keys.right.pressed && lastKey === "right") {
+        player.maxFrames = 9
+        player.currentSprite = player.sprites.run.right
+        player.currentDirection = 'right'
+    } else if (keys.left.pressed && lastKey === "left") {
+        player.maxFrames = 9
+        player.currentSprite = player.sprites.run.left
+        player.currentDirection = 'left'
+    } else {
+        player.maxFrames = 4
+        player.currentSprite = player.sprites.stand[player.currentDirection]
+    }
+
+    if (keys.right.pressed && player.position.x < 400) player.velocity.x = player.speed
+    else if ((keys.left.pressed && player.position.x > 100) || (keys.left.pressed && scrollOffset === 0 && player.position.x > 0)) player.velocity.x = -player.speed
+    else {
+        player.velocity.x = 0
+        if (keys.right.pressed) {
+            scrollOffset += player.speed
+            platforms.forEach(p => p.position.x -= player.speed)
+            genericObjects.forEach(obj => obj.scroll(-player.speed * 0.66))
+            monsters.forEach(monster => monster.position.x -= player.speed)
+        } else if (keys.left.pressed && scrollOffset > 0) {
+            scrollOffset -= player.speed
+            platforms.forEach(p => p.position.x += player.speed)
+            genericObjects.forEach(obj => obj.scroll(player.speed * 0.66))
+            monsters.forEach(monster => monster.position.x += player.speed)
+        }
+    }
+
+    if (scrollOffset > 2000) console.log("You Win")
+
+    if (player.position.y > canvas.height) resetLevel()
+}
+
+addEventListener('keydown', ({ keyCode }) => {
+    switch (keyCode) {
+        case 65: keys.left.pressed = true; lastKey = "left"; break
+        case 68: keys.right.pressed = true; lastKey = "right"; break
+        case 87:
+            if (player.velocity.y === 0) player.velocity.y = -10
+            keys.up.pressed = true
+            break
+        case 83: player.height = 64; keys.down.pressed = true; break
+    }
+})
+
+addEventListener('keyup', ({ keyCode }) => {
+    switch (keyCode) {
+        case 65: keys.left.pressed = false; break
+        case 68: keys.right.pressed = false; break
+        case 87: keys.up.pressed = false; break
+        case 83:
+            player.height = 128
+            player.position.y -= 64
+            keys.down.pressed = false
+            break
+    }
+})
+
+let imagesLoaded = 0
+const totalImages = 10
+
+function onImageLoad() {
+    imagesLoaded++
+    if (imagesLoaded === totalImages) {
+        init()
+        animate()
+    }
+}
+
+tilesetImage.onload = onImageLoad
+backgroundImage.onload = onImageLoad
+cloudsImage.onload = onImageLoad
+runImage.onload = onImageLoad
+runLeftImage.onload = onImageLoad
+idleImage.onload = onImageLoad
+idleLeftImage.onload = onImageLoad
+jumpImage.onload = onImageLoad
+jumpLeftImage.onload = onImageLoad
+monsterImage.onload = onImageLoad
