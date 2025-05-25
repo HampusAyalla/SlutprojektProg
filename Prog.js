@@ -1,8 +1,10 @@
+import platform from 'img/oak_woods_tileset'
+console.log(platform)
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
-canvas.width = innerWidth
-canvas.height = innerHeight
+canvas.width = 1024
+canvas.height = 526
 
 const gravity = 0.25
 class Player {
@@ -39,8 +41,8 @@ class Platform {
             x,
             y
         }
-        this.width = 200
-        this.height = 20
+        this.width = 500
+        this.height = 60
     }
 
     draw(){
@@ -51,8 +53,9 @@ class Platform {
 }
 
 const player = new Player()
-const platforms = [new Platform({x: 200, y: 100}),
-     new Platform({x: 500, y: 200})]
+const platforms = [new Platform({x: -1, y: 470}),
+     new Platform({x: 350, y: 175}),
+     new Platform({x: 900, y: 200})]
 const keys = {
     right: {
         pressed: false
@@ -72,7 +75,8 @@ let scrollOffset = 0
 
 function animate(){
     requestAnimationFrame(animate)
-    c.clearRect(0, 0, canvas.width, canvas.height)
+    c.fillStyle = 'white'
+    c.fillRect(0, 0, canvas.width, canvas.height)
     
     platforms.forEach(platform =>{
         platform.draw()
@@ -152,7 +156,7 @@ addEventListener('keyup', ({keyCode}) => {
         case 83:
             console.log('down')
             player.height = 30
-            player.position.y -= 10
+            player.position.y += 10
             keys.down.pressed = false
             break
     }
