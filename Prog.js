@@ -1,3 +1,4 @@
+document.getElementById("ljud").volume = 0.025;
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
@@ -85,8 +86,7 @@ const levels = [
             { x: 900, y: 400, tiles: 2 },
             { x: 1100, y: 300, tiles: 5 },
             { x: 1500, y: 400, tiles: 4 },
-            { x: 1400, y: 325, tiles: 12 },
-            { x: 1400, y: 450, tiles: 12 }
+            { x: 1400, y: 325, tiles: 12 }
         ],
         monsters: [
             { x: 310, y: 450 },
@@ -112,16 +112,19 @@ function createImage(src) {
 }
 
 const tilesetImage = createImage('./img/oak_woods_tileset.png')
-const backgroundImage = createImage('./img/background.png')
-const cloudsImage = createImage('./img/clouds.png')
+const backgroundImage = createImage('./img/backgroundCity1.png')
+const BackgrounCity2Image = createImage('./img/BackgroundCity2.png')
+const BackgrounCity3Image = createImage('./img/BackgroundCity3.png')
+const BackgrounCity4Image = createImage('./img/BackgroundCity4.png')
+const BackgrounCity5Image = createImage('./img/BackgroundCity5.png')
 const runImage = createImage('./img/Run.png')
 const runLeftImage = createImage('./img/Run_left.png')
 const idleImage = createImage('./img/Idle.png')
 const idleLeftImage = createImage('./img/Idle_left.png')
 const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
-const monsterImage = createImage('./img/slime_monster.png')
-const coinImage = createImage('./img/coin.png')
+const monsterImage = createImage('./img/gangster_enemy.png')
+const coinImage = createImage('./img/Spinning-Coin.gif')
 
 class Player {
     constructor() {
@@ -194,21 +197,29 @@ class Platform {
 }
 
 class GenericObject {
-    constructor({ x, y, image }) {
+    constructor({ x, y, image, scrollSpeed = 1 }) {
         this.position = { x, y }
         this.image = image
+        this.scrollSpeed = scrollSpeed
     }
 
     draw() {
-        const w = this.image.width
-        const repetitions = Math.ceil(canvas.width / w) + 2
-        for (let i = 0; i < repetitions; i++) {
-            c.drawImage(this.image, this.position.x + i * w, this.position.y)
-        }
+    const w = this.image.width
+    const h = this.image.height
+    const repetitions = Math.ceil(canvas.width / w) + 2
+    for (let i = 0; i < repetitions; i++) {
+        c.drawImage(
+            this.image,
+            this.position.x + i * w,
+            this.position.y,
+            w,
+            canvas.height 
+        )
     }
+}
 
     scroll(dx) {
-        this.position.x += dx
+        this.position.x += dx * this.scrollSpeed
     }
 }
 
@@ -272,8 +283,11 @@ function loadLevel(levelIndex) {
     monsters = level.monsters.map(m => new Monster(m))
     coins = level.coins.map(c => new Coin(c))
     genericObjects = [
-        new GenericObject({ x: 0, y: 0, image: backgroundImage }),
-        new GenericObject({ x: 0, y: 0, image: cloudsImage })
+        new GenericObject({ x: 0, y: 0, image: backgroundImage, scrollSpeed: 0.2 }),
+        new GenericObject({ x: 0, y: 0, image: BackgrounCity2Image, scrollSpeed: 0.35 }),
+        new GenericObject({ x: 0, y: 0, image: BackgrounCity3Image, scrollSpeed: 0.5 }),
+        new GenericObject({ x: 0, y: 0, image: BackgrounCity4Image, scrollSpeed: 0.75 }),
+        new GenericObject({ x: 0, y: 0, image: BackgrounCity5Image, scrollSpeed: 1 })
     ]
     scrollOffset = 0
     startTime = performance.now()
@@ -331,7 +345,8 @@ function animate() {
     if (monsters.length > 0 && coins.some(c => !c.collected)) {
         c.fillStyle = 'rgba(0,0,0,0.7)'
         c.font = '16px Arial'
-        c.fillText('Defeat all monsters to collect the coin!', 20, 90)
+        c.fillText('Slå alla monster för att kunna ta upp mynter!', 20, 90)
+        c.fillText('Keybindings (W,A,S,D)', 20, 110)
     }
 
     monsters.forEach((monster, i) => {
@@ -398,8 +413,8 @@ function animate() {
         const t = ((performance.now() - startTime) / 1000).toFixed(2)
         c.fillStyle = 'black'
         c.font = '20px Arial'
-        c.fillText(`Time: ${t}s`, 20, 30)
-        c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
+        c.fillText(`Tid: ${t}s`, 20, 30)
+        c.fillText(`Poäng: ${Math.floor(score)}`, 20, 60)
     } else if (levelCompleted) {
         const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
         if (!bonusGiven) {
@@ -457,7 +472,10 @@ function onImageLoad() {
 
 tilesetImage.onload = onImageLoad
 backgroundImage.onload = onImageLoad
-cloudsImage.onload = onImageLoad
+BackgrounCity2Image.onload = onImageLoad
+BackgrounCity3Image.onload = onImageLoad
+BackgrounCity4Image.onload = onImageLoad
+BackgrounCity5Image.onload = onImageLoad
 runImage.onload = onImageLoad
 runLeftImage.onload = onImageLoad
 idleImage.onload = onImageLoad
