@@ -128,7 +128,7 @@ const coinImage = createImage('./img/Spinning-Coin.gif')
 
 class Player {
     constructor() {
-        this.speed = 5
+        this.speed = 4.5
         this.position = { x: 100, y: 100 }
         this.velocity = { x: 0, y: 0 }
         this.width = 55
