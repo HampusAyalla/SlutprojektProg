@@ -12,6 +12,12 @@ let genericObjects = []
 let monsters = []
 let scrollOffset = 0
 let lastKey
+let score = 0
+
+let startTime = null
+let endTime = null
+let levelCompleted = false
+let bonusGiven = false // <-- Ny variabel
 
 const keys = {
     right: { pressed: false },
@@ -35,7 +41,7 @@ const idleImage = createImage('./img/Idle.png')
 const idleLeftImage = createImage('./img/Idle_left.png')
 const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
-const monsterImage = createImage('./img/jump.png')
+const monsterImage = createImage('./img/slime_monster.png')
 
 class Player {
     constructor() {
@@ -113,15 +119,19 @@ class GenericObject {
         this.position = { x, y }
         this.image = image
     }
+
     draw() {
-        const repetitions = Math.ceil(canvas.width / this.image.width) + 1
+        const imageWidth = this.image.width
+        const startX = Math.floor(this.position.x / imageWidth) * imageWidth
+        const repetitions = Math.ceil(canvas.width / imageWidth) + 2
+
         for (let i = 0; i < repetitions; i++) {
-            c.drawImage(this.image, this.position.x + i * this.image.width, this.position.y)
+            c.drawImage(this.image, startX + i * imageWidth, this.position.y)
         }
     }
+
     scroll(dx) {
         this.position.x += dx
-        if (this.position.x <= -this.image.width) this.position.x = 0
     }
 }
 
@@ -132,12 +142,15 @@ class Monster {
         this.width = 50
         this.height = 50
     }
+
     draw() {
         c.drawImage(monsterImage, this.position.x, this.position.y, this.width, this.height)
     }
+
     update() {
         this.position.x += this.velocity.x
-        if (this.position.x < 0 || this.position.x > canvas.width - this.width) this.velocity.x *= -1
+        if (this.position.x < 0 || this.position.x > canvas.width - this.width)
+            this.velocity.x *= -1
         this.draw()
     }
 }
@@ -149,10 +162,10 @@ function init() {
         new Monster({ x: 1000, y: 450 })
     ]
 
-    const tileCount = Math.ceil(canvas.width / 24) + 70 // Gör marken extra bred
+    const tileCount = Math.ceil(canvas.width / 24) + 100
 
     platforms = [
-        new Platform({ x: 0, y: 502, tiles: tileCount }), // MARKEN
+        new Platform({ x: 0, y: 502, tiles: tileCount }),
         new Platform({ x: 300, y: 360, tiles: 5 }),
         new Platform({ x: 600, y: 300, tiles: 8 }),
         new Platform({ x: 1250, y: 150, tiles: 4 })
@@ -164,6 +177,10 @@ function init() {
     ]
 
     scrollOffset = 0
+    score = 0
+    startTime = performance.now()
+    levelCompleted = false
+    bonusGiven = false
 }
 
 function resetLevel() {
@@ -195,11 +212,10 @@ function animate() {
         const playerBottom = player.position.y + player.height
         const monsterTop = monster.position.y
         const playerPrevBottom = playerBottom - player.velocity.y
-        const horizontalCollision = 
+        const horizontalCollision =
             player.position.x + player.width > monster.position.x &&
             player.position.x < monster.position.x + monster.width
 
-        // Om spelaren hoppar på monstret
         if (
             playerPrevBottom <= monsterTop &&
             playerBottom >= monsterTop &&
@@ -208,9 +224,8 @@ function animate() {
         ) {
             monsters.splice(i, 1)
             player.velocity.y = -8
-        } 
-        // Om spelaren krockar med monstret från sidan eller under
-        else if (
+            score += 100
+        } else if (
             horizontalCollision &&
             player.position.y < monster.position.y + monster.height &&
             playerBottom > monster.position.y
@@ -252,7 +267,28 @@ function animate() {
         }
     }
 
-    if (scrollOffset > 2000) console.log("You Win")
+    if (scrollOffset > 2000 && !levelCompleted) {
+        endTime = performance.now()
+        levelCompleted = true
+    }
+
+    if (startTime && !levelCompleted) {
+        const currentTime = ((performance.now() - startTime) / 1000).toFixed(2)
+        c.fillStyle = 'black'
+        c.font = '20px Arial'
+        c.fillText(`Time: ${currentTime}s`, 20, 30)
+        c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
+    } else if (levelCompleted) {
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
+        if (!bonusGiven) {
+            score += Math.floor(1000 / timeTaken)
+            bonusGiven = true
+        }
+        c.fillStyle = 'black'
+        c.font = '20px Arial'
+        c.fillText(`Completed in: ${timeTaken}s`, 20, 30)
+        c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
+    }
 
     if (player.position.y > canvas.height) resetLevel()
 }
