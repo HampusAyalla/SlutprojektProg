@@ -1,4 +1,4 @@
-document.getElementById("ljud").volume = 0.025;
+document.getElementById("ljud").volume = 0.025; 
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
