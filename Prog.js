@@ -14,11 +14,89 @@ let coins = []
 let scrollOffset = 0
 let lastKey
 let score = 0
-
 let startTime = null
 let endTime = null
 let levelCompleted = false
 let bonusGiven = false
+let currentLevel = 0
+
+const levels = [
+    {
+        platforms: [
+            { x: 0, y: 502, tiles: 60 },
+            { x: 300, y: 360, tiles: 5 },
+            { x: 600, y: 300, tiles: 8 },
+            { x: 0, y: 110, tiles: 4 },
+            { x: 200, y: 225, tiles: 5 },
+            { x: 500, y: 150, tiles: 5 },
+            { x: 1000, y: 250, tiles: 6 }
+        ],
+        monsters: [
+            { x: 620, y: 250 },
+            { x: 1000, y: 450 }
+        ],
+        coins: [
+            { x: 28, y: 70 }
+        ]
+    },
+    {
+        platforms: [
+            { x: 0, y: 502, tiles: 60 },
+            { x: 300, y: 420, tiles: 5 },
+            { x: 150, y: 150, tiles: 4 },
+            { x: 800, y: 260, tiles: 5 },
+            { x: 1000, y: 180, tiles: 3 },
+            { x: 1250, y: 100, tiles: 4 },
+            { x: 390, y: 280, tiles: 10 },
+            { x: 450, y: 190, tiles: 2 },
+        ],
+        monsters: [
+            { x: 170, y: 100 },
+            { x: 820, y: 210 },
+            { x: 1260, y: 50 }
+        ],
+        coins: [
+            { x: 1280, y: 60 }
+        ]
+    },
+    {
+        platforms: [
+            { x: 0, y: 502, tiles: 20 },
+            { x: 200, y: 400, tiles: 4 },
+            { x: 400, y: 90, tiles: 3 },
+            { x: 700, y: 400, tiles: 4 },
+            { x: 400, y: 300, tiles: 3 },
+            { x: 0, y: 250, tiles: 5 },
+            { x: 600, y: 250, tiles: 5 }
+        ],
+        monsters: [
+            { x: 210, y: 350 },
+            { x: 710, y: 350 },
+        ],
+        coins: [
+            { x: 420, y: 40 }
+        ]
+    },
+    {
+        platforms: [
+            { x: 0, y: 502, tiles: 20 },
+            { x: 170, y: 370, tiles: 4 },
+            { x: 350, y: 250, tiles: 4 },
+            { x: 900, y: 400, tiles: 2 },
+            { x: 1100, y: 300, tiles: 5 },
+            { x: 1500, y: 400, tiles: 4 },
+            { x: 1400, y: 325, tiles: 12 },
+            { x: 1400, y: 450, tiles: 12 }
+        ],
+        monsters: [
+            { x: 310, y: 450 },
+            { x: 710, y: 230 },
+        ],
+        coins: [
+            { x: 1530, y: 360 }
+        ]
+    }
+]
 
 const keys = {
     right: { pressed: false },
@@ -27,9 +105,9 @@ const keys = {
     down: { pressed: false }
 }
 
-function createImage(imageSrc) {
+function createImage(src) {
     const image = new Image()
-    image.src = imageSrc
+    image.src = src
     return image
 }
 
@@ -43,7 +121,7 @@ const idleLeftImage = createImage('./img/Idle_left.png')
 const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
 const monsterImage = createImage('./img/slime_monster.png')
-const coinImage = createImage('./img/coin.png') 
+const coinImage = createImage('./img/coin.png')
 
 class Player {
     constructor() {
@@ -56,7 +134,6 @@ class Player {
         this.maxFrames = 4
         this.frameElapsed = 0
         this.frameHold = 8
-
         this.sprites = {
             stand: { right: idleImage, left: idleLeftImage },
             run: { right: runImage, left: runLeftImage },
@@ -90,11 +167,11 @@ class Player {
 }
 
 class Platform {
-    constructor({ x, y, tiles = 5 }) {
+    constructor({ x, y, tiles }) {
         this.position = { x, y }
         this.tiles = tiles
         this.tileSize = 24
-        this.width = this.tiles * this.tileSize
+        this.width = tiles * this.tileSize
         this.height = this.tileSize
     }
 
@@ -123,12 +200,10 @@ class GenericObject {
     }
 
     draw() {
-        const imageWidth = this.image.width
-        const startX = Math.floor(this.position.x / imageWidth) * imageWidth
-        const repetitions = Math.ceil(canvas.width / imageWidth) + 2
-
+        const w = this.image.width
+        const repetitions = Math.ceil(canvas.width / w) + 2
         for (let i = 0; i < repetitions; i++) {
-            c.drawImage(this.image, startX + i * imageWidth, this.position.y)
+            c.drawImage(this.image, this.position.x + i * w, this.position.y)
         }
     }
 
@@ -151,8 +226,27 @@ class Monster {
 
     update() {
         this.position.x += this.velocity.x
-        if (this.position.x < 0 || this.position.x > canvas.width - this.width)
-            this.velocity.x *= -1
+
+        const currentPlatform = platforms.find(platform =>
+            Math.abs(this.position.y + this.height - platform.position.y) < 5 &&
+            this.position.x + this.width > platform.position.x &&
+            this.position.x < platform.position.x + platform.width
+        )
+
+        if (currentPlatform) {
+            const nextLeft = this.position.x + this.velocity.x
+            const nextRight = nextLeft + this.width
+
+            if (
+                nextLeft < currentPlatform.position.x ||
+                nextRight > currentPlatform.position.x + currentPlatform.width
+            ) {
+                this.velocity.x *= -1
+            }
+        } else {
+            this.velocity.x = 0
+        }
+
         this.draw()
     }
 }
@@ -166,48 +260,34 @@ class Coin {
     }
 
     draw() {
-        if (!this.collected) {
+        if (!this.collected)
             c.drawImage(coinImage, this.position.x, this.position.y, this.width, this.height)
-        }
     }
 }
 
-function init() {
+function loadLevel(levelIndex) {
+    const level = levels[levelIndex]
     player = new Player()
-    monsters = [
-        new Monster({ x: 500, y: 450 }),
-        new Monster({ x: 1000, y: 450 })
-    ]
-
-    const tileCount = Math.ceil(canvas.width / 24) + 100
-
-    platforms = [
-        new Platform({ x: 0, y: 502, tiles: tileCount }),
-        new Platform({ x: 300, y: 360, tiles: 5 }),
-        new Platform({ x: 600, y: 300, tiles: 8 }),
-        new Platform({ x: 0, y: 110, tiles: 4 }),
-        new Platform({ x: 200, y: 200, tiles: 5 }),
-        new Platform({ x: 500, y: 150, tiles: 5 })
-    ]
-
+    platforms = level.platforms.map(p => new Platform(p))
+    monsters = level.monsters.map(m => new Monster(m))
+    coins = level.coins.map(c => new Coin(c))
     genericObjects = [
         new GenericObject({ x: 0, y: 0, image: backgroundImage }),
         new GenericObject({ x: 0, y: 0, image: cloudsImage })
     ]
-
-    coins = [
-        new Coin({ x: 28, y: 70 })
-    ]
-
     scrollOffset = 0
-    score = 0
     startTime = performance.now()
     levelCompleted = false
     bonusGiven = false
 }
 
-function resetLevel() {
-    init()
+function nextLevel() {
+    currentLevel++
+    if (currentLevel >= levels.length) {
+        alert("Grattis! Du klarade alla nivåer!")
+        currentLevel = 0
+    }
+    loadLevel(currentLevel)
 }
 
 function animate() {
@@ -215,28 +295,27 @@ function animate() {
     c.fillStyle = 'white'
     c.fillRect(0, 0, canvas.width, canvas.height)
 
-    genericObjects.forEach(obj => obj.draw())
-    platforms.forEach(platform => platform.draw())
-    monsters.forEach(monster => monster.update())
-    coins.forEach(coin => coin.draw())
+    genericObjects.forEach(o => o.draw())
+    platforms.forEach(p => p.draw())
+    monsters.forEach(m => m.update())
+    coins.forEach(cn => cn.draw())
     player.update()
 
-    platforms.forEach(platform => {
+    platforms.forEach(p => {
         if (
-            player.position.y + player.height <= platform.position.y &&
-            player.position.y + player.height + player.velocity.y >= platform.position.y &&
-            player.position.x + player.width >= platform.position.x &&
-            player.position.x <= platform.position.x + platform.width
+            player.position.y + player.height <= p.position.y &&
+            player.position.y + player.height + player.velocity.y >= p.position.y &&
+            player.position.x + player.width >= p.position.x &&
+            player.position.x <= p.position.x + p.width
         ) {
-            player.velocity.y = 0
+            if (!keys.down.pressed || p.position.y >= 480) {
+                player.velocity.y = 0
+            }
         }
     })
 
-    // Coin collection only allowed when all monsters are gone
     coins.forEach((coin) => {
-        if (
-            !coin.collected &&
-            monsters.length === 0 &&
+        if (!coin.collected && monsters.length === 0 &&
             player.position.x < coin.position.x + coin.width &&
             player.position.x + player.width > coin.position.x &&
             player.position.y < coin.position.y + coin.height &&
@@ -244,12 +323,12 @@ function animate() {
         ) {
             coin.collected = true
             levelCompleted = true
+            endTime = performance.now()
             score += 50
         }
     })
 
-    // Show message if coin is blocked by monsters
-    if (monsters.length > 0 && coins.some(coin => !coin.collected)) {
+    if (monsters.length > 0 && coins.some(c => !c.collected)) {
         c.fillStyle = 'rgba(0,0,0,0.7)'
         c.font = '16px Arial'
         c.fillText('Defeat all monsters to collect the coin!', 20, 90)
@@ -259,30 +338,29 @@ function animate() {
         const playerBottom = player.position.y + player.height
         const monsterTop = monster.position.y
         const playerPrevBottom = playerBottom - player.velocity.y
-        const horizontalCollision =
-            player.position.x + player.width > monster.position.x &&
-            player.position.x < monster.position.x + monster.width
+        const horizontal = player.position.x + player.width > monster.position.x &&
+                           player.position.x < monster.position.x + monster.width
 
         if (
             playerPrevBottom <= monsterTop &&
             playerBottom >= monsterTop &&
             player.velocity.y > 0 &&
-            horizontalCollision
+            horizontal
         ) {
             monsters.splice(i, 1)
             player.velocity.y = -8
             score += 100
         } else if (
-            horizontalCollision &&
+            horizontal &&
             player.position.y < monster.position.y + monster.height &&
             playerBottom > monster.position.y
         ) {
-            resetLevel()
+            loadLevel(currentLevel)
         }
     })
 
-    if (player.velocity.y < 0 || player.velocity.y > 0) {
-        player.maxFrames = 0
+    if (player.velocity.y !== 0) {
+        player.maxFrames = 9
         player.currentSprite = player.sprites.jump[player.currentDirection]
     } else if (keys.right.pressed && lastKey === "right") {
         player.maxFrames = 9
@@ -298,39 +376,36 @@ function animate() {
     }
 
     if (keys.right.pressed && player.position.x < 400) player.velocity.x = player.speed
-    else if ((keys.left.pressed && player.position.x > 100) || (keys.left.pressed && scrollOffset === 0 && player.position.x > 0)) player.velocity.x = -player.speed
+    else if (keys.left.pressed && (player.position.x > 100 || (scrollOffset === 0 && player.position.x > 0))) player.velocity.x = -player.speed
     else {
         player.velocity.x = 0
         if (keys.right.pressed) {
             scrollOffset += player.speed
             platforms.forEach(p => p.position.x -= player.speed)
             genericObjects.forEach(obj => obj.scroll(-player.speed * 0.66))
-            monsters.forEach(monster => monster.position.x -= player.speed)
-            coins.forEach(coin => coin.position.x -= player.speed)
+            monsters.forEach(m => m.position.x -= player.speed)
+            coins.forEach(c => c.position.x -= player.speed)
         } else if (keys.left.pressed && scrollOffset > 0) {
             scrollOffset -= player.speed
             platforms.forEach(p => p.position.x += player.speed)
             genericObjects.forEach(obj => obj.scroll(player.speed * 0.66))
-            monsters.forEach(monster => monster.position.x += player.speed)
-            coins.forEach(coin => coin.position.x += player.speed)
+            monsters.forEach(m => m.position.x += player.speed)
+            coins.forEach(c => c.position.x += player.speed)
         }
     }
 
-    if (levelCompleted) {
-        endTime = performance.now()
-    }
-
     if (startTime && !levelCompleted) {
-        const currentTime = ((performance.now() - startTime) / 1000).toFixed(2)
+        const t = ((performance.now() - startTime) / 1000).toFixed(2)
         c.fillStyle = 'black'
         c.font = '20px Arial'
-        c.fillText(`Time: ${currentTime}s`, 20, 30)
+        c.fillText(`Time: ${t}s`, 20, 30)
         c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
     } else if (levelCompleted) {
         const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
         if (!bonusGiven) {
             score += Math.floor(1000 / timeTaken)
             bonusGiven = true
+            setTimeout(nextLevel, 2000)
         }
         c.fillStyle = 'black'
         c.font = '20px Arial'
@@ -338,7 +413,10 @@ function animate() {
         c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
     }
 
-    if (player.position.y > canvas.height) resetLevel()
+    if (player.position.y > canvas.height){
+        loadLevel(currentLevel)
+        score = 0
+    }
 }
 
 addEventListener('keydown', ({ keyCode }) => {
@@ -372,7 +450,7 @@ const totalImages = 11
 function onImageLoad() {
     imagesLoaded++
     if (imagesLoaded === totalImages) {
-        init()
+        loadLevel(currentLevel)
         animate()
     }
 }
