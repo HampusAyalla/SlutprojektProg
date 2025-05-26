@@ -20,6 +20,10 @@ let endTime = null
 let levelCompleted = false
 let bonusGiven = false
 let currentLevel = 0
+let lives = 3
+let lastLevelScore = 0
+let highScore = localStorage.getItem('platformerHighScore') || 0;
+
 
 const levels = [
     {
@@ -76,7 +80,7 @@ const levels = [
         ],
         coins: [
             { x: 420, y: 40 }
-        ]
+        ],
     },
     {
         platforms: [
@@ -124,12 +128,12 @@ const idleLeftImage = createImage('./img/Idle_left.png')
 const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
 const monsterImage = createImage('./img/gangster_enemy.png')
-const coinImage = createImage('./img/Spinning-Coin.gif')
+const coinImage = createImage('./img/Coin.gif')
 
 class Player {
     constructor() {
         this.speed = 4.5
-        this.position = { x: 100, y: 100 }
+        this.position = { x: 50, y: 404 }
         this.velocity = { x: 0, y: 0 }
         this.width = 55
         this.height = 98
@@ -279,6 +283,9 @@ class Coin {
 function loadLevel(levelIndex) {
     const level = levels[levelIndex]
     player = new Player()
+    if(levelIndex === 2){
+        player.position.y = 100
+    }
     platforms = level.platforms.map(p => new Platform(p))
     monsters = level.monsters.map(m => new Monster(m))
     coins = level.coins.map(c => new Coin(c))
@@ -293,6 +300,7 @@ function loadLevel(levelIndex) {
     startTime = performance.now()
     levelCompleted = false
     bonusGiven = false
+    lastLevelScore = score
 }
 
 function nextLevel() {
@@ -300,6 +308,8 @@ function nextLevel() {
     if (currentLevel >= levels.length) {
         alert("Grattis! Du klarade alla nivåer!")
         currentLevel = 0
+        score = 0
+        lives = 3
     }
     loadLevel(currentLevel)
 }
@@ -370,7 +380,24 @@ function animate() {
             player.position.y < monster.position.y + monster.height &&
             playerBottom > monster.position.y
         ) {
-            loadLevel(currentLevel)
+            lives -= 1
+
+            if (lives <= 0) {
+        // SPELET STARTAR OM
+        alert("Game Over! Poäng: " + score)
+        score = 0
+        currentLevel = 0
+        lives = 3
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('platformerHighScore', highScore);
+}
+        loadLevel(currentLevel)
+    } else {
+        // Ladda om nuvarande nivå men behåll score
+        score = lastLevelScore
+        loadLevel(currentLevel)
+    }
         }
     })
 
@@ -415,6 +442,8 @@ function animate() {
         c.font = '20px Arial'
         c.fillText(`Tid: ${t}s`, 20, 30)
         c.fillText(`Poäng: ${Math.floor(score)}`, 20, 60)
+        c.fillText(`Liv: ${lives}`, canvas.width - 100, 30)
+        c.fillText(`Highscore: ${highScore}`, canvas.width - 180, 60);
     } else if (levelCompleted) {
         const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
         if (!bonusGiven) {
@@ -424,13 +453,33 @@ function animate() {
         }
         c.fillStyle = 'black'
         c.font = '20px Arial'
-        c.fillText(`Completed in: ${timeTaken}s`, 20, 30)
+        c.fillText(`Level completed in: ${timeTaken}s`, 20, 30)
         c.fillText(`Score: ${Math.floor(score)}`, 20, 60)
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('platformerHighScore', highScore);
+        }
     }
 
     if (player.position.y > canvas.height){
-        loadLevel(currentLevel)
+        lives -= 1
+
+        if (lives <= 0) {
+        // SPELET STARTAR OM
+        alert("Game Over! Poäng: " + score)
         score = 0
+        currentLevel = 0
+        lives = 3
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('platformerHighScore', highScore);
+        }
+        loadLevel(currentLevel)
+    } else {
+        // Ladda om nuvarande nivå men behåll score
+        score = lastLevelScore
+        loadLevel(currentLevel)
+    }
     }
 }
 
@@ -452,7 +501,7 @@ addEventListener('keyup', ({ keyCode }) => {
         case 68: keys.right.pressed = false; break
         case 87: keys.up.pressed = false; break
         case 83:
-            player.height = 128
+            player.height = 98
             player.position.y -= 64
             keys.down.pressed = false
             break
