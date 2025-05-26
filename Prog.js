@@ -4,12 +4,13 @@ const c = canvas.getContext('2d')
 canvas.width = 1024
 canvas.height = 526
 
-const gravity = 0.25
+const gravity = 0.35
 
 let player
 let platforms = []
 let genericObjects = []
 let monsters = []
+let coins = []
 let scrollOffset = 0
 let lastKey
 let score = 0
@@ -17,7 +18,7 @@ let score = 0
 let startTime = null
 let endTime = null
 let levelCompleted = false
-let bonusGiven = false // <-- Ny variabel
+let bonusGiven = false
 
 const keys = {
     right: { pressed: false },
@@ -42,14 +43,15 @@ const idleLeftImage = createImage('./img/Idle_left.png')
 const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
 const monsterImage = createImage('./img/slime_monster.png')
+const coinImage = createImage('./img/coin.png') 
 
 class Player {
     constructor() {
         this.speed = 5
         this.position = { x: 100, y: 100 }
         this.velocity = { x: 0, y: 0 }
-        this.width = 70
-        this.height = 128
+        this.width = 55
+        this.height = 98
         this.frames = 0
         this.maxFrames = 4
         this.frameElapsed = 0
@@ -67,7 +69,7 @@ class Player {
     draw() {
         c.drawImage(
             this.currentSprite,
-            26 + this.frames * 128, 0, 70, 128,
+            38 + this.frames * 128, 30, 55, 98,
             this.position.x, this.position.y,
             this.width, this.height
         )
@@ -155,6 +157,21 @@ class Monster {
     }
 }
 
+class Coin {
+    constructor({ x, y }) {
+        this.position = { x, y }
+        this.width = 32
+        this.height = 32
+        this.collected = false
+    }
+
+    draw() {
+        if (!this.collected) {
+            c.drawImage(coinImage, this.position.x, this.position.y, this.width, this.height)
+        }
+    }
+}
+
 function init() {
     player = new Player()
     monsters = [
@@ -168,12 +185,18 @@ function init() {
         new Platform({ x: 0, y: 502, tiles: tileCount }),
         new Platform({ x: 300, y: 360, tiles: 5 }),
         new Platform({ x: 600, y: 300, tiles: 8 }),
-        new Platform({ x: 1250, y: 150, tiles: 4 })
+        new Platform({ x: 0, y: 110, tiles: 4 }),
+        new Platform({ x: 200, y: 200, tiles: 5 }),
+        new Platform({ x: 500, y: 150, tiles: 5 })
     ]
 
     genericObjects = [
         new GenericObject({ x: 0, y: 0, image: backgroundImage }),
         new GenericObject({ x: 0, y: 0, image: cloudsImage })
+    ]
+
+    coins = [
+        new Coin({ x: 28, y: 70 })
     ]
 
     scrollOffset = 0
@@ -195,6 +218,7 @@ function animate() {
     genericObjects.forEach(obj => obj.draw())
     platforms.forEach(platform => platform.draw())
     monsters.forEach(monster => monster.update())
+    coins.forEach(coin => coin.draw())
     player.update()
 
     platforms.forEach(platform => {
@@ -207,6 +231,29 @@ function animate() {
             player.velocity.y = 0
         }
     })
+
+    // Coin collection only allowed when all monsters are gone
+    coins.forEach((coin) => {
+        if (
+            !coin.collected &&
+            monsters.length === 0 &&
+            player.position.x < coin.position.x + coin.width &&
+            player.position.x + player.width > coin.position.x &&
+            player.position.y < coin.position.y + coin.height &&
+            player.position.y + player.height > coin.position.y
+        ) {
+            coin.collected = true
+            levelCompleted = true
+            score += 50
+        }
+    })
+
+    // Show message if coin is blocked by monsters
+    if (monsters.length > 0 && coins.some(coin => !coin.collected)) {
+        c.fillStyle = 'rgba(0,0,0,0.7)'
+        c.font = '16px Arial'
+        c.fillText('Defeat all monsters to collect the coin!', 20, 90)
+    }
 
     monsters.forEach((monster, i) => {
         const playerBottom = player.position.y + player.height
@@ -259,17 +306,18 @@ function animate() {
             platforms.forEach(p => p.position.x -= player.speed)
             genericObjects.forEach(obj => obj.scroll(-player.speed * 0.66))
             monsters.forEach(monster => monster.position.x -= player.speed)
+            coins.forEach(coin => coin.position.x -= player.speed)
         } else if (keys.left.pressed && scrollOffset > 0) {
             scrollOffset -= player.speed
             platforms.forEach(p => p.position.x += player.speed)
             genericObjects.forEach(obj => obj.scroll(player.speed * 0.66))
             monsters.forEach(monster => monster.position.x += player.speed)
+            coins.forEach(coin => coin.position.x += player.speed)
         }
     }
 
-    if (scrollOffset > 2000 && !levelCompleted) {
+    if (levelCompleted) {
         endTime = performance.now()
-        levelCompleted = true
     }
 
     if (startTime && !levelCompleted) {
@@ -319,7 +367,7 @@ addEventListener('keyup', ({ keyCode }) => {
 })
 
 let imagesLoaded = 0
-const totalImages = 10
+const totalImages = 11
 
 function onImageLoad() {
     imagesLoaded++
@@ -339,3 +387,4 @@ idleLeftImage.onload = onImageLoad
 jumpImage.onload = onImageLoad
 jumpLeftImage.onload = onImageLoad
 monsterImage.onload = onImageLoad
+coinImage.onload = onImageLoad
