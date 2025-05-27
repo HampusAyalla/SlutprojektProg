@@ -1,4 +1,5 @@
-document.getElementById("ljud").volume = 0.025; 
+// Sätt ljudvolymen till en låg nivå 
+document.getElementById("ljud").volume = 0.025;
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
@@ -24,7 +25,7 @@ let lives = 3
 let lastLevelScore = 0
 let highScore = localStorage.getItem('platformerHighScore') || 0;
 
-
+// Nivådata (plattformar, monster och mynt per nivå)
 const levels = [
     {
         platforms: [
@@ -108,13 +109,13 @@ const keys = {
     up: { pressed: false },
     down: { pressed: false }
 }
-
+// Hjälpmetod för att skapa bilder
 function createImage(src) {
     const image = new Image()
     image.src = src
     return image
 }
-
+// Ladda bilder för grafik och sprites
 const tilesetImage = createImage('./img/oak_woods_tileset.png')
 const backgroundImage = createImage('./img/backgroundCity1.png')
 const BackgrounCity2Image = createImage('./img/BackgroundCity2.png')
@@ -129,6 +130,8 @@ const jumpImage = createImage('./img/Jump.png')
 const jumpLeftImage = createImage('./img/Jump_left.png')
 const monsterImage = createImage('./img/gangster_enemy.png')
 const coinImage = createImage('./img/Coin.gif')
+
+// klasser används för att det ska bli enklare att skapa fler av en sort och fixa mellan levlar
 
 class Player {
     constructor() {
@@ -199,7 +202,7 @@ class Platform {
         }
     }
 }
-
+// Klass för bakgrundsobjekt (I vårat fall parallax)
 class GenericObject {
     constructor({ x, y, image, scrollSpeed = 1 }) {
         this.position = { x, y }
@@ -279,7 +282,7 @@ class Coin {
             c.drawImage(coinImage, this.position.x, this.position.y, this.width, this.height)
     }
 }
-
+// Ladda nivå efter index
 function loadLevel(levelIndex) {
     const level = levels[levelIndex]
     player = new Player()
@@ -302,7 +305,7 @@ function loadLevel(levelIndex) {
     bonusGiven = false
     lastLevelScore = score
 }
-
+// Gå till nästa nivå eller starta om om det var sista
 function nextLevel() {
     currentLevel++
     if (currentLevel >= levels.length) {
@@ -313,18 +316,20 @@ function nextLevel() {
     }
     loadLevel(currentLevel)
 }
-
+// Huvudanimationsloopen
 function animate() {
     requestAnimationFrame(animate)
     c.fillStyle = 'white'
     c.fillRect(0, 0, canvas.width, canvas.height)
 
+ // Rita bakgrunder, plattformar, monster, mynt och spelare
     genericObjects.forEach(o => o.draw())
     platforms.forEach(p => p.draw())
     monsters.forEach(m => m.update())
     coins.forEach(cn => cn.draw())
     player.update()
 
+// Hantera kollision mellan spelare och plattformar
     platforms.forEach(p => {
         if (
             player.position.y + player.height <= p.position.y &&
@@ -337,6 +342,8 @@ function animate() {
             }
         }
     })
+
+// Hantera insamling av mynt (efter alla monster är döda)
 
     coins.forEach((coin) => {
         if (!coin.collected && monsters.length === 0 &&
@@ -358,14 +365,13 @@ function animate() {
         c.fillText('Slå alla monster för att kunna ta upp mynter!', 20, 90)
         c.fillText('Keybindings (W,A,S,D)', 20, 110)
     }
-
+// Hantera kollision med monster och att ramla ner för banan (döda monster eller förlora liv)
     monsters.forEach((monster, i) => {
         const playerBottom = player.position.y + player.height
         const monsterTop = monster.position.y
         const playerPrevBottom = playerBottom - player.velocity.y
         const horizontal = player.position.x + player.width > monster.position.x &&
                            player.position.x < monster.position.x + monster.width
-
         if (
             playerPrevBottom <= monsterTop &&
             playerBottom >= monsterTop &&
@@ -383,7 +389,7 @@ function animate() {
             lives -= 1
 
             if (lives <= 0) {
-        // SPELET STARTAR OM
+        // Spelet startar om
         alert("Game Over! Poäng: " + score)
         score = 0
         currentLevel = 0
@@ -400,7 +406,28 @@ function animate() {
     }
         }
     })
+    // Kollar om man har ramlat ner för mappen
+    if(player.position.y > canvas.height){
+        lives -= 1
 
+        if (lives <= 0) {
+    // Spelet startar om
+    alert("Game Over! Poäng: " + score)
+    score = 0
+    currentLevel = 0
+    lives = 3
+    if (score > highScore) {
+         highScore = score;
+        localStorage.setItem('platformerHighScore', highScore);
+}
+        loadLevel(currentLevel)
+    } else {
+        // Ladda om nuvarande nivå men behåll score
+        score = lastLevelScore
+        loadLevel(currentLevel)
+    }
+        }
+// Hantera spelarens sprite beroende på rörelse eller hopp
     if (player.velocity.y !== 0) {
         player.maxFrames = 9
         player.currentSprite = player.sprites.jump[player.currentDirection]
@@ -417,6 +444,7 @@ function animate() {
         player.currentSprite = player.sprites.stand[player.currentDirection]
     }
 
+// Scrolla världen om spelaren når skärmens kant
     if (keys.right.pressed && player.position.x < 400) player.velocity.x = player.speed
     else if (keys.left.pressed && (player.position.x > 100 || (scrollOffset === 0 && player.position.x > 0))) player.velocity.x = -player.speed
     else {
@@ -435,7 +463,7 @@ function animate() {
             coins.forEach(c => c.position.x += player.speed)
         }
     }
-
+// Bestäm hur lång tid leveln har tagit samt rita tid, poäng, liv och highscore på skärmen
     if (startTime && !levelCompleted) {
         const t = ((performance.now() - startTime) / 1000).toFixed(2)
         c.fillStyle = 'black'
@@ -460,29 +488,9 @@ function animate() {
             localStorage.setItem('platformerHighScore', highScore);
         }
     }
-
-    if (player.position.y > canvas.height){
-        lives -= 1
-
-        if (lives <= 0) {
-        // SPELET STARTAR OM
-        alert("Game Over! Poäng: " + score)
-        score = 0
-        currentLevel = 0
-        lives = 3
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('platformerHighScore', highScore);
-        }
-        loadLevel(currentLevel)
-    } else {
-        // Ladda om nuvarande nivå men behåll score
-        score = lastLevelScore
-        loadLevel(currentLevel)
-    }
-    }
 }
 
+// Spelarens rörelse
 addEventListener('keydown', ({ keyCode }) => {
     switch (keyCode) {
         case 65: keys.left.pressed = true; lastKey = "left"; break
@@ -508,6 +516,7 @@ addEventListener('keyup', ({ keyCode }) => {
     }
 })
 
+// Ser till att alla bilder är laddade innan spelet börjar
 let imagesLoaded = 0
 const totalImages = 11
 
